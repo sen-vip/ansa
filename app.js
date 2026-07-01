@@ -1,0 +1,284 @@
+const STORAGE_KEY = 'ansaOrdersV1';
+let orders = loadOrders();
+let currentCompleteOrder = null;
+
+const routes = {
+  home: document.getElementById('homeView'),
+  complete: document.getElementById('completeView'),
+  orders: document.getElementById('ordersView'),
+  report: document.getElementById('reportView'),
+};
+
+const form = document.getElementById('fakeOrderForm');
+const formError = document.getElementById('formError');
+const categoryChips = document.getElementById('categoryChips');
+const desireChips = document.getElementById('desireChips');
+
+function loadOrders() {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch {
+    return [];
+  }
+}
+
+function saveOrders() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+  renderAll();
+}
+
+function formatWon(value) {
+  const num = Number(value) || 0;
+  return `${num.toLocaleString('ko-KR')}원`;
+}
+
+function parsePrice(value) {
+  return Number(String(value || '').replace(/[^0-9]/g, '')) || 0;
+}
+
+function formatDate(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function ymd(date = new Date()) {
+  return date.toISOString().slice(0, 10).replaceAll('-', '');
+}
+
+function generateOrderNo() {
+  const today = ymd();
+  const countToday = orders.filter(order => order.orderNo?.includes(`ANSA-${today}`)).length + 1;
+  return `ANSA-${today}-${String(countToday).padStart(4, '0')}`;
+}
+
+function uniqueId() {
+  return `ansa-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function getSelected(container) {
+  return container.querySelector('.chip.selected')?.dataset.value || '';
+}
+
+function setupChipGroup(container) {
+  container.addEventListener('click', event => {
+    const chip = event.target.closest('.chip');
+    if (!chip) return;
+    container.querySelectorAll('.chip').forEach(item => item.classList.remove('selected', 'warm'));
+    chip.classList.add('selected');
+    if (container.id === 'desireChips' && ['꽤 사고 싶음', '진짜 사고 싶음', '지금 당장 사고 싶음'].includes(chip.dataset.value)) {
+      chip.classList.add('warm');
+    }
+  });
+}
+
+function navigate(route) {
+  Object.entries(routes).forEach(([key, view]) => view.classList.toggle('active', key === route));
+  document.querySelectorAll('.nav-link').forEach(link => link.classList.toggle('active', link.dataset.route === route));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  renderAll();
+}
+
+document.body.addEventListener('click', event => {
+  const routeButton = event.target.closest('[data-route]');
+  if (routeButton) navigate(routeButton.dataset.route);
+});
+
+setupChipGroup(categoryChips);
+setupChipGroup(desireChips);
+
+form.addEventListener('submit', event => {
+  event.preventDefault();
+  formError.textContent = '';
+  const productName = document.getElementById('productName').value.trim();
+  const price = parsePrice(document.getElementById('price').value);
+  const shopName = document.getElementById('shopName').value.trim() || '미입력';
+  const category = getSelected(categoryChips) || '기타';
+  const initialDesire = getSelected(desireChips) || '꽤 사고 싶음';
+  const reason = document.getElementById('reason').value.trim();
+
+  if (!productName) {
+    formError.textContent = '상품명을 입력해주세요.';
+    document.getElementById('productName').focus();
+    return;
+  }
+  if (!price) {
+    formError.textContent = '가격을 입력해주세요.';
+    document.getElementById('price').focus();
+    return;
+  }
+
+  const order = {
+    id: uniqueId(),
+    orderNo: generateOrderNo(),
+    productName,
+    price,
+    shopName,
+    category,
+    reason,
+    createdAt: new Date().toISOString(),
+    shippingStatus: '상품 준비중',
+    initialDesire,
+    afterDeliveryScore: null,
+    review: '',
+    finalDecision: null,
+  };
+  orders.unshift(order);
+  currentCompleteOrder = order;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+  form.reset();
+  categoryChips.querySelectorAll('.chip').forEach(chip => chip.classList.remove('selected'));
+  categoryChips.querySelector('[data-value="전자기기"]').classList.add('selected');
+  desireChips.querySelectorAll('.chip').forEach(chip => chip.classList.remove('selected', 'warm'));
+  const defaultDesire = desireChips.querySelector('[data-value="꽤 사고 싶음"]');
+  defaultDesire.classList.add('selected', 'warm');
+  renderComplete(order);
+  navigate('complete');
+});
+
+function renderComplete(order) {
+  if (!order) return;
+  document.getElementById('completeSaved').textContent = formatWon(order.price);
+  document.getElementById('completeDetails').innerHTML = `
+    <div><span>주문번호</span><strong>${order.orderNo}</strong></div>
+    <div><span>상품명</span><strong>${escapeHtml(order.productName)}</strong></div>
+    <div><span>결제금액</span><strong>${formatWon(order.price)}</strong></div>
+    <div><span>쇼핑몰명</span><strong>${escapeHtml(order.shopName)}</strong></div>
+    <div><span>주문일시</span><strong>${formatDate(order.createdAt)}</strong></div>
+    <div><span>배송상태</span><strong>${order.shippingStatus}</strong></div>
+  `;
+}
+
+function escapeHtml(text) {
+  return String(text || '').replace(/[&<>'"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[char]));
+}
+
+function isThisMonth(dateString) {
+  const date = new Date(dateString);
+  const now = new Date();
+  return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth();
+}
+
+function calculateStats() {
+  const confirmed = orders.filter(order => order.finalDecision === '안 사도 됨');
+  const monthConfirmed = confirmed.filter(order => isThisMonth(order.createdAt));
+  const pending = orders.filter(order => order.finalDecision === '조금 더 고민');
+  const buy = orders.filter(order => order.finalDecision === '진짜 구매 후보');
+  const totalConfirmed = confirmed.reduce((sum, order) => sum + order.price, 0);
+  const monthConfirmedAmount = monthConfirmed.reduce((sum, order) => sum + order.price, 0);
+  const categoryMap = confirmed.reduce((map, order) => {
+    map[order.category] = (map[order.category] || 0) + order.price;
+    return map;
+  }, {});
+  return { confirmed, monthConfirmed, pending, buy, totalConfirmed, monthConfirmedAmount, categoryMap };
+}
+
+function renderHomeStats() {
+  const stats = calculateStats();
+  document.getElementById('homeMonthSaved').textContent = formatWon(stats.monthConfirmedAmount);
+  document.getElementById('homeSummary').textContent = `가짜 결제 ${orders.length}회 · 안 사도 됨 ${stats.confirmed.length}개`;
+}
+
+function renderOrders() {
+  const list = document.getElementById('ordersList');
+  list.innerHTML = '';
+  if (!orders.length) {
+    list.innerHTML = `<div class="empty-state card-strong"><strong>아직 가짜 주문이 없어요.</strong><span>첫 번째 마음 결제서를 작성해보세요.</span></div>`;
+    return;
+  }
+  const template = document.getElementById('orderCardTemplate');
+  orders.forEach(order => {
+    const node = template.content.cloneNode(true);
+    const card = node.querySelector('.order-card');
+    card.dataset.id = order.id;
+    node.querySelector('.category-tag').textContent = order.category;
+    node.querySelector('h2').textContent = order.productName;
+    node.querySelector('.meta').textContent = `${order.orderNo} · ${order.shopName} · ${formatDate(order.createdAt)}`;
+    node.querySelector('.reason-text').textContent = order.reason ? `구매 이유: ${order.reason}` : '구매 이유: 아직 적지 않았어요.';
+    node.querySelector('.price-text').textContent = formatWon(order.price);
+    node.querySelector('.status-pill').textContent = `배송상태: ${order.shippingStatus}`;
+    node.querySelector('.desire-pill').textContent = `처음 마음: ${order.initialDesire}`;
+    const decision = node.querySelector('.decision-pill');
+    decision.textContent = `최종 판단: ${order.finalDecision || '아직 없음'}`;
+    decision.classList.toggle('good', order.finalDecision === '안 사도 됨');
+    decision.classList.toggle('hold', order.finalDecision === '조금 더 고민');
+    decision.classList.toggle('buy', order.finalDecision === '진짜 구매 후보');
+
+    const actions = node.querySelector('.order-actions');
+    if (order.shippingStatus === '상품 준비중') {
+      actions.append(actionButton('배송중으로 변경', () => updateOrder(order.id, { shippingStatus: '배송중' })));
+    }
+    if (order.shippingStatus !== '배송완료') {
+      actions.append(actionButton('배송완료 처리', () => updateOrder(order.id, { shippingStatus: '배송완료' })));
+    }
+    actions.append(actionButton('삭제', () => deleteOrder(order.id), 'danger'));
+
+    const panel = node.querySelector('.review-panel');
+    if (order.shippingStatus === '배송완료') panel.classList.remove('hidden');
+    node.querySelector('.score-select').value = order.afterDeliveryScore || '';
+    node.querySelector('.review-input').value = order.review || '';
+    node.querySelector('.decision-select').value = order.finalDecision || '';
+    node.querySelector('.save-review').addEventListener('click', () => {
+      const currentCard = document.querySelector(`.order-card[data-id="${order.id}"]`);
+      updateOrder(order.id, {
+        afterDeliveryScore: currentCard.querySelector('.score-select').value || null,
+        review: currentCard.querySelector('.review-input').value.trim(),
+        finalDecision: currentCard.querySelector('.decision-select').value || null,
+      });
+    });
+    list.appendChild(node);
+  });
+}
+
+function actionButton(text, onClick, className = '') {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.textContent = text;
+  if (className) button.classList.add(className);
+  button.addEventListener('click', onClick);
+  return button;
+}
+
+function updateOrder(id, patch) {
+  orders = orders.map(order => order.id === id ? { ...order, ...patch } : order);
+  saveOrders();
+}
+
+function deleteOrder(id) {
+  if (!confirm('이 가짜 주문을 삭제할까요?')) return;
+  orders = orders.filter(order => order.id !== id);
+  saveOrders();
+}
+
+function renderReport() {
+  const stats = calculateStats();
+  const cards = [
+    ['이번 달 확정 절약금액', formatWon(stats.monthConfirmedAmount), 'primary'],
+    ['전체 확정 절약금액', formatWon(stats.totalConfirmed), 'primary'],
+    ['가짜 결제 횟수', `${orders.length}회`, ''],
+    ['안 사도 된 상품', `${stats.confirmed.length}개`, ''],
+    ['고민 중인 상품', `${stats.pending.length}개`, ''],
+    ['진짜 구매 후보', `${stats.buy.length}개`, ''],
+  ];
+  document.getElementById('reportCards').innerHTML = cards.map(([label, value, type]) => `
+    <article class="report-card card-strong ${type}"><p>${label}</p><strong>${value}</strong></article>
+  `).join('');
+
+  const categoryReport = document.getElementById('categoryReport');
+  const entries = Object.entries(stats.categoryMap).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) {
+    categoryReport.innerHTML = '<p class="meta">최종 판단이 “안 사도 됨”인 상품이 생기면 여기에 카테고리별 절약금액이 표시돼요.</p>';
+  } else {
+    categoryReport.innerHTML = `<div class="category-list">${entries.map(([category, amount]) => `
+      <div class="category-row"><span>${category}</span><strong>${formatWon(amount)}</strong></div>
+    `).join('')}</div>`;
+  }
+}
+
+function renderAll() {
+  renderHomeStats();
+  renderOrders();
+  renderReport();
+  if (currentCompleteOrder) renderComplete(currentCompleteOrder);
+}
+
+renderAll();

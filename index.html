@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>안 샀다 | 사고 싶은 마음만 결제하는 쇼핑 시뮬레이터</title>
+  <meta name="description" content="사고 싶은 마음만 결제하고, 실제 구매 전 한 번 더 식혀보는 쇼핑 시뮬레이터" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <button class="brand" type="button" data-route="home" aria-label="홈으로 이동">
+        <span class="brand-mark">✓</span>
+        <span>
+          <strong>안 샀다</strong>
+          <small>질렀지만, 안 샀다.</small>
+        </span>
+      </button>
+      <nav class="nav-tabs" aria-label="주요 메뉴">
+        <button type="button" data-route="home" class="nav-link active">가짜로 사기</button>
+        <button type="button" data-route="orders" class="nav-link">안 산 것들</button>
+        <button type="button" data-route="report" class="nav-link">절약 리포트</button>
+      </nav>
+    </header>
+
+    <main>
+      <section id="homeView" class="view active">
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <span class="safe-pill">시뮬레이션 모드 · 실제 결제 아님</span>
+            <h1>오늘 사고 싶은 게<br />있나요?</h1>
+            <p class="hero-sub">진짜 결제하기 전에,<br />마음만 먼저 결제해보세요.</p>
+            <p class="hero-note">실제로 결제되지는 않아요. 대신 사고 싶은 마음을 기록하고 식혀볼 수 있어요.</p>
+
+            <div class="receipt-illust" aria-hidden="true">
+              <div class="paper">
+                <strong>안 샀다</strong>
+                <span></span><span></span><span></span>
+                <em>☺</em>
+              </div>
+              <div class="box"><span>♥</span></div>
+            </div>
+
+            <article class="mini-report card-soft">
+              <div class="mini-icon">돼</div>
+              <div>
+                <p>이번 달 지킨 돈</p>
+                <strong id="homeMonthSaved">0원</strong>
+                <small id="homeSummary">가짜 결제 0회 · 안 사도 됨 0개</small>
+              </div>
+            </article>
+          </div>
+
+          <section class="checkout-card card-strong" aria-labelledby="checkoutTitle">
+            <div class="card-title-row">
+              <div>
+                <span class="receipt-icon">▤</span>
+                <h2 id="checkoutTitle">마음 결제서</h2>
+              </div>
+              <span class="mode-badge">실제로 결제되지 않아요</span>
+            </div>
+
+            <form id="fakeOrderForm" novalidate>
+              <div class="form-grid two">
+                <label>
+                  상품명 <b>*</b>
+                  <input id="productName" type="text" placeholder="예: 아이패드 에어" autocomplete="off" />
+                </label>
+                <label>
+                  가격 <b>*</b>
+                  <div class="price-wrap">
+                    <input id="price" type="text" inputmode="numeric" placeholder="예: 899,000" autocomplete="off" />
+                    <span>원</span>
+                  </div>
+                </label>
+              </div>
+
+              <label>
+                쇼핑몰명
+                <input id="shopName" type="text" placeholder="예: 네이버쇼핑" autocomplete="off" />
+              </label>
+
+              <div class="chip-section">
+                <p>카테고리</p>
+                <div class="chips" id="categoryChips">
+                  <button type="button" class="chip selected" data-value="전자기기">전자기기</button>
+                  <button type="button" class="chip" data-value="의류·잡화">의류·잡화</button>
+                  <button type="button" class="chip" data-value="생활용품">생활용품</button>
+                  <button type="button" class="chip" data-value="취미">취미</button>
+                  <button type="button" class="chip" data-value="뷰티">뷰티</button>
+                  <button type="button" class="chip" data-value="식품">식품</button>
+                  <button type="button" class="chip" data-value="기타">기타</button>
+                </div>
+              </div>
+
+              <div class="chip-section">
+                <p>지금 구매욕구</p>
+                <div class="chips desire" id="desireChips">
+                  <button type="button" class="chip" data-value="그냥 구경">그냥 구경</button>
+                  <button type="button" class="chip" data-value="조금 사고 싶음">조금 사고 싶음</button>
+                  <button type="button" class="chip selected warm" data-value="꽤 사고 싶음">꽤 사고 싶음</button>
+                  <button type="button" class="chip" data-value="진짜 사고 싶음">진짜 사고 싶음</button>
+                  <button type="button" class="chip" data-value="지금 당장 사고 싶음">지금 당장 사고 싶음</button>
+                </div>
+              </div>
+
+              <label>
+                구매 이유 <small>(선택)</small>
+                <input id="reason" type="text" placeholder="예: 스트레스 해소, 자기 보상, 꼭 필요해서 등" autocomplete="off" />
+              </label>
+
+              <p id="formError" class="form-error" role="alert"></p>
+              <button class="primary-btn" type="submit">가짜로 결제하기</button>
+              <p class="safe-copy">실제 결제가 아닌 구매욕구 시뮬레이션입니다.</p>
+            </form>
+          </section>
+        </div>
+      </section>
+
+      <section id="completeView" class="view">
+        <div class="complete-card card-strong">
+          <span class="complete-mark">✓</span>
+          <p class="eyebrow">가짜 주문 완료</p>
+          <h2>결제가 완료되었습니다.</h2>
+          <p class="complete-lead">실제로는 결제되지 않았어요.<br />대신 지금 <strong id="completeSaved">0원</strong>을 지켰습니다.</p>
+          <div class="order-box" id="completeDetails"></div>
+          <div class="complete-actions">
+            <button class="primary-btn" type="button" data-route="orders">안 산 것들에서 보기</button>
+            <button class="ghost-btn" type="button" data-route="home">하나 더 가짜로 사기</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="ordersView" class="view">
+        <div class="page-head">
+          <div>
+            <p class="eyebrow">Archive</p>
+            <h1>안 산 것들</h1>
+            <p>지른 마음은 기록하고, 통장은 지켰어요.</p>
+          </div>
+          <button class="ghost-btn" type="button" data-route="home">새 가짜 주문</button>
+        </div>
+        <div id="ordersList" class="orders-list"></div>
+      </section>
+
+      <section id="reportView" class="view">
+        <div class="page-head">
+          <div>
+            <p class="eyebrow">Report</p>
+            <h1>절약 리포트</h1>
+            <p>이건 참은 게 아니라, 한 번 더 생각한 기록이에요.</p>
+          </div>
+        </div>
+        <div class="report-grid" id="reportCards"></div>
+        <section class="card-strong category-report">
+          <h2>카테고리별 확정 절약금액</h2>
+          <div id="categoryReport"></div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <template id="orderCardTemplate">
+    <article class="order-card card-strong">
+      <div class="order-main">
+        <div>
+          <span class="category-tag"></span>
+          <h2></h2>
+          <p class="meta"></p>
+          <p class="reason-text"></p>
+        </div>
+        <strong class="price-text"></strong>
+      </div>
+      <div class="order-status-row">
+        <span class="status-pill"></span>
+        <span class="desire-pill"></span>
+        <span class="decision-pill"></span>
+      </div>
+      <div class="order-actions"></div>
+      <div class="review-panel hidden">
+        <h3>배송 후 마음은 어때요?</h3>
+        <label>
+          배송 후 구매욕구 별점
+          <select class="score-select">
+            <option value="">선택해주세요</option>
+            <option value="1">★☆☆☆☆ 이제 별로 안 사고 싶음</option>
+            <option value="2">★★☆☆☆ 조금 식었음</option>
+            <option value="3">★★★☆☆ 있으면 좋지만 급하진 않음</option>
+            <option value="4">★★★★☆ 아직 꽤 사고 싶음</option>
+            <option value="5">★★★★★ 아직도 너무 사고 싶음</option>
+          </select>
+        </label>
+        <label>
+          가짜 구매 후기
+          <textarea class="review-input" rows="3" placeholder="가짜로 결제해보니 생각보다 마음이 식었어요."></textarea>
+        </label>
+        <label>
+          최종 판단
+          <select class="decision-select">
+            <option value="">선택해주세요</option>
+            <option value="안 사도 됨">안 사도 됨</option>
+            <option value="조금 더 고민">조금 더 고민</option>
+            <option value="진짜 구매 후보">진짜 구매 후보</option>
+          </select>
+        </label>
+        <button class="secondary-btn save-review" type="button">평가 저장</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
