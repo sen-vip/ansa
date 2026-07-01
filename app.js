@@ -1,4 +1,6 @@
 const STORAGE_KEY = 'ansaOrdersV1';
+const DELIVERY_MS = 24 * 60 * 60 * 1000;
+
 let orders = loadOrders();
 let currentCompleteOrder = null;
 let pendingOrder = null;
@@ -18,10 +20,23 @@ const desireChips = document.getElementById('desireChips');
 
 function loadOrders() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    return saved.map(migrateOrder);
   } catch {
     return [];
   }
+}
+
+function migrateOrder(order) {
+  const createdAt = order.createdAt || new Date().toISOString();
+  return {
+    ...order,
+    createdAt,
+    fakeDeliveredAt: order.fakeDeliveredAt || new Date(new Date(createdAt).getTime() + DELIVERY_MS).toISOString(),
+    confirmedAt: order.confirmedAt || null,
+    confirmedBeforeDelivery: Boolean(order.confirmedBeforeDelivery),
+    reviewCreatedAt: order.reviewCreatedAt || null,
+  };
 }
 
 function saveOrders() {
@@ -47,6 +62,20 @@ function formatPriceInputValue(value) {
 function formatDate(dateString) {
   const date = new Date(dateString);
   return date.toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatEta(dateString) {
+  const date = new Date(dateString);
+  return date.toLocaleString('ko-KR', { month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function timeLeftText(targetDateString) {
+  const diff = new Date(targetDateString).getTime() - Date.now();
+  if (diff <= 0) return '도착 완료';
+  const hours = Math.floor(diff / (60 * 60 * 1000));
+  const minutes = Math.max(1, Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000)));
+  if (hours >= 1) return `약 ${hours}시간 ${minutes}분 남음`;
+  return `약 ${minutes}분 남음`;
 }
 
 function ymd(date = new Date()) {
@@ -77,6 +106,47 @@ function setupChipGroup(container) {
       chip.classList.add('warm');
     }
   });
+}
+
+function getDeliveryInfo(order) {
+  const created = new Date(order.createdAt).getTime();
+  const delivered = new Date(order.fakeDeliveredAt || created + DELIVERY_MS).getTime();
+  const now = Date.now();
+  const elapsed = now - created;
+  const total = Math.max(delivered - created, DELIVERY_MS);
+  const progress = Math.max(0, Math.min(100, Math.round((elapsed / total) * 100)));
+
+  let status = '주문 확인중';
+  let step = 0;
+  let message = '가짜 주문이 접수됐어요. 마음이 조금 식는지 지켜볼게요.';
+
+  if (now >= delivered) {
+    status = '배송완료';
+    step = 4;
+    message = '가짜 상품이 도착했어요. 구매확정하고 마음 리뷰를 남길 수 있어요.';
+  } else if (elapsed >= 12 * 60 * 60 * 1000) {
+    status = '배송중';
+    step = 3;
+    message = '가짜 상품이 오고 있어요. 기다리는 동안 마음을 식혀볼까요?';
+  } else if (elapsed >= 3 * 60 * 60 * 1000) {
+    status = '출고 완료';
+    step = 2;
+    message = '가짜 상품이 출고된 척하고 있어요. 아직 돈은 그대로예요.';
+  } else if (elapsed >= 10 * 60 * 1000) {
+    status = '상품 준비중';
+    step = 1;
+    message = '상품을 준비하는 척하는 중이에요. 실제 결제와 배송은 없어요.';
+  }
+
+  return {
+    status,
+    step,
+    progress,
+    deliveredAtText: formatEta(order.fakeDeliveredAt || new Date(created + DELIVERY_MS).toISOString()),
+    leftText: timeLeftText(order.fakeDeliveredAt || new Date(created + DELIVERY_MS).toISOString()),
+    message,
+    isDelivered: status === '배송완료',
+  };
 }
 
 function navigate(route) {
@@ -121,6 +191,7 @@ form.addEventListener('submit', event => {
     return;
   }
 
+  const createdAt = new Date();
   pendingOrder = {
     id: uniqueId(),
     orderNo: generateOrderNo(),
@@ -129,11 +200,14 @@ form.addEventListener('submit', event => {
     shopName,
     category,
     reason,
-    createdAt: new Date().toISOString(),
-    shippingStatus: '상품 준비중',
+    createdAt: createdAt.toISOString(),
+    fakeDeliveredAt: new Date(createdAt.getTime() + DELIVERY_MS).toISOString(),
     initialDesire,
+    confirmedAt: null,
+    confirmedBeforeDelivery: false,
     afterDeliveryScore: null,
     review: '',
+    reviewCreatedAt: null,
     finalDecision: null,
   };
   renderConfirm(pendingOrder);
@@ -177,12 +251,13 @@ function renderConfirm(order) {
     <div><span>카테고리</span><strong>${escapeHtml(order.category)}</strong></div>
     <div><span>지금 구매욕구</span><strong>${escapeHtml(order.initialDesire)}</strong></div>
     <div><span>구매 이유</span><strong>${escapeHtml(order.reason || '미입력')}</strong></div>
-    <div><span>예상 배송</span><strong>가짜 배송 · 안 산 것들에 저장</strong></div>
+    <div><span>가짜 배송 예정</span><strong>${formatEta(order.fakeDeliveredAt)} 도착 예정</strong></div>
   `;
 }
 
 function renderComplete(order) {
   if (!order) return;
+  const delivery = getDeliveryInfo(order);
   document.getElementById('completeSaved').textContent = formatWon(order.price);
   document.getElementById('completeDetails').innerHTML = `
     <div><span>주문번호</span><strong>${order.orderNo}</strong></div>
@@ -190,7 +265,7 @@ function renderComplete(order) {
     <div><span>결제금액</span><strong>${formatWon(order.price)}</strong></div>
     <div><span>쇼핑몰명</span><strong>${escapeHtml(order.shopName)}</strong></div>
     <div><span>주문일시</span><strong>${formatDate(order.createdAt)}</strong></div>
-    <div><span>배송상태</span><strong>${order.shippingStatus}</strong></div>
+    <div><span>가짜 배송상태</span><strong>${delivery.status} · ${delivery.leftText}</strong></div>
   `;
 }
 
@@ -209,19 +284,44 @@ function calculateStats() {
   const monthConfirmed = confirmed.filter(order => isThisMonth(order.createdAt));
   const pending = orders.filter(order => order.finalDecision === '조금 더 고민');
   const buy = orders.filter(order => order.finalDecision === '진짜 구매 후보');
+  const earlyConfirmed = orders.filter(order => order.confirmedBeforeDelivery).length;
+  const reviewed = orders.filter(order => order.reviewCreatedAt).length;
   const totalConfirmed = confirmed.reduce((sum, order) => sum + order.price, 0);
   const monthConfirmedAmount = monthConfirmed.reduce((sum, order) => sum + order.price, 0);
   const categoryMap = confirmed.reduce((map, order) => {
     map[order.category] = (map[order.category] || 0) + order.price;
     return map;
   }, {});
-  return { confirmed, monthConfirmed, pending, buy, totalConfirmed, monthConfirmedAmount, categoryMap };
+  return { confirmed, monthConfirmed, pending, buy, earlyConfirmed, reviewed, totalConfirmed, monthConfirmedAmount, categoryMap };
 }
 
 function renderHomeStats() {
   const stats = calculateStats();
   document.getElementById('homeMonthSaved').textContent = formatWon(stats.monthConfirmedAmount);
-  document.getElementById('homeSummary').textContent = `가짜 결제 ${orders.length}회 · 안 사도 됨 ${stats.confirmed.length}개`;
+  document.getElementById('homeSummary').textContent = `가짜 결제 ${orders.length}회 · 안 산 물건 ${stats.confirmed.length}개`;
+}
+
+function renderDeliveryTimeline(order) {
+  const delivery = getDeliveryInfo(order);
+  const steps = ['주문 확인', '상품 준비', '출고 완료', '배송중', '배송완료'];
+  return `
+    <div class="delivery-sim">
+      <div class="delivery-head">
+        <div>
+          <strong>${delivery.status}</strong>
+          <span>${delivery.message}</span>
+        </div>
+        <em>${delivery.leftText}</em>
+      </div>
+      <div class="delivery-track" aria-label="가짜 배송 진행률">
+        <i style="width:${delivery.progress}%"></i>
+      </div>
+      <div class="delivery-steps">
+        ${steps.map((step, index) => `<span class="${index <= delivery.step ? 'done' : ''}">${step}</span>`).join('')}
+      </div>
+      <p class="delivery-note">예상 도착: ${delivery.deliveredAtText} · 실제 상품은 배송되지 않아요.</p>
+    </div>
+  `;
 }
 
 function renderOrders() {
@@ -233,6 +333,7 @@ function renderOrders() {
   }
   const template = document.getElementById('orderCardTemplate');
   orders.forEach(order => {
+    const delivery = getDeliveryInfo(order);
     const node = template.content.cloneNode(true);
     const card = node.querySelector('.order-card');
     card.dataset.id = order.id;
@@ -241,7 +342,7 @@ function renderOrders() {
     node.querySelector('.meta').textContent = `${order.orderNo} · ${order.shopName} · ${formatDate(order.createdAt)}`;
     node.querySelector('.reason-text').textContent = order.reason ? `구매 이유: ${order.reason}` : '구매 이유: 아직 적지 않았어요.';
     node.querySelector('.price-text').textContent = formatWon(order.price);
-    node.querySelector('.status-pill').textContent = `배송상태: ${order.shippingStatus}`;
+    node.querySelector('.status-pill').textContent = `가짜 배송: ${delivery.status}`;
     node.querySelector('.desire-pill').textContent = `처음 마음: ${order.initialDesire}`;
     const decision = node.querySelector('.decision-pill');
     decision.textContent = `최종 판단: ${order.finalDecision || '아직 없음'}`;
@@ -249,26 +350,49 @@ function renderOrders() {
     decision.classList.toggle('hold', order.finalDecision === '조금 더 고민');
     decision.classList.toggle('buy', order.finalDecision === '진짜 구매 후보');
 
+    const deliveryBox = node.querySelector('.delivery-box');
+    deliveryBox.innerHTML = renderDeliveryTimeline(order);
+
     const actions = node.querySelector('.order-actions');
-    if (order.shippingStatus === '상품 준비중') {
-      actions.append(actionButton('배송중으로 변경', () => updateOrder(order.id, { shippingStatus: '배송중' })));
-    }
-    if (order.shippingStatus !== '배송완료') {
-      actions.append(actionButton('배송완료 처리', () => updateOrder(order.id, { shippingStatus: '배송완료' })));
+    if (!order.confirmedAt) {
+      const confirmText = delivery.isDelivered ? '가짜 구매확정하기' : '도착 전 가짜 구매확정하기';
+      actions.append(actionButton(confirmText, () => confirmFakePurchase(order.id), 'confirm-action'));
+    } else {
+      actions.append(actionButton(order.finalDecision ? '리뷰 수정하기' : '리뷰 작성하기', () => revealReviewPanel(order.id), 'review-action'));
     }
     actions.append(actionButton('삭제', () => deleteOrder(order.id), 'danger'));
 
+    const confirmNote = node.querySelector('.confirm-note');
+    if (order.confirmedAt) {
+      confirmNote.textContent = order.confirmedBeforeDelivery
+        ? `구매확정 완료 · 배송완료 전 마음이 먼저 정리됐어요. (${formatDate(order.confirmedAt)})`
+        : `구매확정 완료 · 이제 마음 리뷰를 남길 수 있어요. (${formatDate(order.confirmedAt)})`;
+      confirmNote.classList.remove('hidden');
+    } else if (!delivery.isDelivered) {
+      confirmNote.textContent = '아직 도착 전이어도 마음이 정리됐다면 가짜 구매확정하고 리뷰를 남길 수 있어요.';
+      confirmNote.classList.remove('hidden');
+    } else {
+      confirmNote.textContent = '가짜 상품이 도착했어요. 구매확정하고 마음을 확인해볼까요?';
+      confirmNote.classList.remove('hidden');
+    }
+
     const panel = node.querySelector('.review-panel');
-    if (order.shippingStatus === '배송완료') panel.classList.remove('hidden');
+    if (order.confirmedAt && !order.finalDecision) panel.classList.remove('hidden');
     node.querySelector('.score-select').value = order.afterDeliveryScore || '';
     node.querySelector('.review-input').value = order.review || '';
     node.querySelector('.decision-select').value = order.finalDecision || '';
     node.querySelector('.save-review').addEventListener('click', () => {
       const currentCard = document.querySelector(`.order-card[data-id="${order.id}"]`);
+      const finalDecision = currentCard.querySelector('.decision-select').value || null;
+      if (!finalDecision) {
+        alert('최종 판단을 선택해주세요.');
+        return;
+      }
       updateOrder(order.id, {
         afterDeliveryScore: currentCard.querySelector('.score-select').value || null,
         review: currentCard.querySelector('.review-input').value.trim(),
-        finalDecision: currentCard.querySelector('.decision-select').value || null,
+        finalDecision,
+        reviewCreatedAt: new Date().toISOString(),
       });
     });
     list.appendChild(node);
@@ -284,8 +408,27 @@ function actionButton(text, onClick, className = '') {
   return button;
 }
 
+function confirmFakePurchase(id) {
+  const order = orders.find(item => item.id === id);
+  if (!order) return;
+  const delivery = getDeliveryInfo(order);
+  const message = delivery.isDelivered
+    ? '가짜 상품을 받아본 걸로 하고 구매확정할까요?\n\n이제 마음 리뷰를 남기고, 진짜로 필요한 물건인지 확인할 수 있어요.'
+    : '아직 배송완료 전이에요.\n\n그래도 마음이 정리됐다면 가짜 구매확정하고 리뷰를 남길 수 있어요. 진행할까요?';
+  if (!confirm(message)) return;
+  updateOrder(id, {
+    confirmedAt: new Date().toISOString(),
+    confirmedBeforeDelivery: !delivery.isDelivered,
+  });
+}
+
+function revealReviewPanel(id) {
+  const panel = document.querySelector(`.order-card[data-id="${id}"] .review-panel`);
+  if (panel) panel.classList.remove('hidden');
+}
+
 function updateOrder(id, patch) {
-  orders = orders.map(order => order.id === id ? { ...order, ...patch } : order);
+  orders = orders.map(order => order.id === id ? migrateOrder({ ...order, ...patch }) : order);
   saveOrders();
 }
 
@@ -304,6 +447,8 @@ function renderReport() {
     ['안 사도 된 상품', `${stats.confirmed.length}개`, ''],
     ['고민 중인 상품', `${stats.pending.length}개`, ''],
     ['진짜 구매 후보', `${stats.buy.length}개`, ''],
+    ['도착 전 구매확정', `${stats.earlyConfirmed}개`, ''],
+    ['리뷰 작성 완료', `${stats.reviewed}개`, ''],
   ];
   document.getElementById('reportCards').innerHTML = cards.map(([label, value, type]) => `
     <article class="report-card card-strong ${type}"><p>${label}</p><strong>${value}</strong></article>
@@ -329,3 +474,4 @@ function renderAll() {
 }
 
 renderAll();
+setInterval(renderAll, 60 * 1000);

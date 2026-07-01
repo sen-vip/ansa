@@ -47,16 +47,17 @@
             <article class="mini-report card-soft">
               <div class="mini-icon piggy-icon" aria-hidden="true">
                 <svg viewBox="0 0 64 64" role="img" aria-label="돼지저금통 아이콘">
-                  <path d="M18 30c0-9 8-16 20-16 9 0 17 4 21 11l4 1v12l-5 2c-2 5-6 9-12 11v7h-8v-5h-9v5h-8v-7c-5-2-9-6-11-11H5V29h8c1-3 3-6 5-8v9Z" />
-                  <path d="M21 20c-2-5-6-8-11-8 0 6 3 10 8 12" />
-                  <circle cx="47" cy="30" r="2.8" />
-                  <path d="M31 20h13" />
+                  <path class="pig-body" d="M17.5 34.5c0-9.5 8.7-17 20.3-17 9.1 0 16.4 4.4 19.1 11.2l4.1 1.1v9.4l-4.4 1.4c-1.7 5-5.7 8.8-11.1 10.5v5.4h-7.1v-4.2h-9.6v4.2h-7.1v-5.8c-4.9-2.1-8.5-6.2-9.8-11.1H7.2v-8.9h6.6c.8-2.3 2.1-4.4 3.7-6.2Z"/>
+                  <path class="pig-ear" d="M22.4 20.2c-2.4-4.2-6.1-6.7-10.7-6.9.4 5.2 3.2 8.7 7.7 10.4"/>
+                  <path class="coin-line" d="M31.2 22.7h12.3"/>
+                  <circle class="pig-eye" cx="47.8" cy="32.2" r="2.2"/>
+                  <path class="check-mark" d="M27.2 38.1l4.2 4.1 8.2-9.2"/>
                 </svg>
               </div>
               <div>
                 <p>이번 달 지킨 돈</p>
                 <strong id="homeMonthSaved">0원</strong>
-                <small id="homeSummary">가짜 결제 0회 · 안 사도 됨 0개</small>
+                <small id="homeSummary">가짜 결제 0회 · 안 산 물건 0개</small>
               </div>
             </article>
           </div>
@@ -65,9 +66,12 @@
             <div class="card-title-row">
               <div>
                 <span class="receipt-icon">▤</span>
-                <h2 id="checkoutTitle">마음 결제서</h2>
+                <div>
+                  <h2 id="checkoutTitle">마음 결제서</h2>
+                  <p class="title-caption">실제 결제 없이 사고 싶은 마음만 기록해요</p>
+                </div>
               </div>
-              <span class="mode-badge">실제로 결제되지 않아요</span>
+              <span class="mode-badge">실제 결제 아님</span>
             </div>
 
             <form id="fakeOrderForm" novalidate>
@@ -132,8 +136,8 @@
           <div class="page-head compact">
             <div>
               <p class="eyebrow">Simulation Checkout</p>
-              <h1>가짜 주문을 확인해주세요</h1>
-              <p>실제 결제창처럼 한 번 더 확인하지만, 돈은 빠져나가지 않아요.</p>
+              <h1>마음 결제 전에 확인해볼까요?</h1>
+              <p>이 단계는 실제 결제가 아니라, 사고 싶은 마음을 한 번 정리하는 과정이에요.</p>
             </div>
           </div>
 
@@ -151,8 +155,8 @@
 
             <aside class="card-strong pay-panel">
               <p class="eyebrow">마음 결제</p>
-              <h2>결제할까요?</h2>
-              <p class="pay-copy">이 단계는 구매욕구를 기록하는 시뮬레이션입니다. 카드번호, 배송지, 계좌정보는 받지 않아요.</p>
+              <h2>가짜 결제를 완료할까요?</h2>
+              <p class="pay-copy">카드번호, 배송지, 계좌정보는 받지 않아요. 통장에서 돈이 빠져나가지 않는 구매욕구 시뮬레이션입니다.</p>
 
               <div class="fake-method">
                 <span>결제수단</span>
@@ -168,7 +172,7 @@
                 </ul>
               </div>
 
-              <button id="confirmPayButton" class="primary-btn" type="button">네, 가짜로 결제할게요</button>
+              <button id="confirmPayButton" class="primary-btn" type="button">가짜 결제 완료하기</button>
               <button id="editOrderButton" class="ghost-btn full" type="button">다시 수정하기</button>
               <p class="safe-copy stronger">실제 결제가 아닌 구매욕구 시뮬레이션입니다.</p>
             </aside>
@@ -179,6 +183,7 @@
       <section id="completeView" class="view">
         <div class="complete-card card-strong">
           <span class="complete-mark">✓</span>
+          <span class="mode-badge complete-badge">시뮬레이션 완료 · 실제 결제 아님</span>
           <p class="eyebrow">가짜 주문 완료</p>
           <h2>결제가 완료되었습니다.</h2>
           <p class="complete-lead">실제로는 결제되지 않았어요.<br />대신 지금 <strong id="completeSaved">0원</strong>을 지켰습니다.</p>
@@ -235,9 +240,12 @@
         <span class="desire-pill"></span>
         <span class="decision-pill"></span>
       </div>
+      <div class="delivery-box"></div>
+      <p class="confirm-note hidden"></p>
       <div class="order-actions"></div>
       <div class="review-panel hidden">
-        <h3>배송 후 마음은 어때요?</h3>
+        <h3>가짜 구매 리뷰</h3>
+        <p class="review-guide">상품 리뷰가 아니라, 내 마음에 남기는 리뷰예요.</p>
         <label>
           배송 후 구매욕구 별점
           <select class="score-select">
@@ -262,7 +270,7 @@
             <option value="진짜 구매 후보">진짜 구매 후보</option>
           </select>
         </label>
-        <button class="secondary-btn save-review" type="button">평가 저장</button>
+        <button class="secondary-btn save-review" type="button">리뷰 저장</button>
       </div>
     </article>
   </template>
