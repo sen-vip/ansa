@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="안 샀다">
+  <rect width="64" height="64" rx="18" fill="#1F3A5F"/>
+  <text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle"
+        font-family="Pretendard, Apple SD Gothic Neo, Noto Sans KR, sans-serif"
+        font-size="26" font-weight="900" letter-spacing="-2" fill="#FFFFFF">안</text>
+  <circle cx="48" cy="47" r="7" fill="#2E7D64"/>
+  <path d="M44.5 47.2l2.2 2.2 4.4-5" fill="none" stroke="#FFFFFF" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,9 +1,11 @@
 const STORAGE_KEY = 'ansaOrdersV1';
 let orders = loadOrders();
 let currentCompleteOrder = null;
+let pendingOrder = null;
 
 const routes = {
   home: document.getElementById('homeView'),
+  confirm: document.getElementById('confirmView'),
   complete: document.getElementById('completeView'),
   orders: document.getElementById('ordersView'),
   report: document.getElementById('reportView'),
@@ -34,6 +36,12 @@ function formatWon(value) {
 
 function parsePrice(value) {
   return Number(String(value || '').replace(/[^0-9]/g, '')) || 0;
+}
+
+function formatPriceInputValue(value) {
+  const numericValue = String(value || '').replace(/[^0-9]/g, '');
+  if (!numericValue) return '';
+  return Number(numericValue).toLocaleString('ko-KR');
 }
 
 function formatDate(dateString) {
@@ -86,6 +94,12 @@ document.body.addEventListener('click', event => {
 setupChipGroup(categoryChips);
 setupChipGroup(desireChips);
 
+const priceInput = document.getElementById('price');
+priceInput.addEventListener('input', event => {
+  const formatted = formatPriceInputValue(event.target.value);
+  event.target.value = formatted;
+});
+
 form.addEventListener('submit', event => {
   event.preventDefault();
   formError.textContent = '';
@@ -107,7 +121,7 @@ form.addEventListener('submit', event => {
     return;
   }
 
-  const order = {
+  pendingOrder = {
     id: uniqueId(),
     orderNo: generateOrderNo(),
     productName,
@@ -122,18 +136,50 @@ form.addEventListener('submit', event => {
     review: '',
     finalDecision: null,
   };
+  renderConfirm(pendingOrder);
+  navigate('confirm');
+});
+
+document.getElementById('confirmPayButton').addEventListener('click', () => {
+  if (!pendingOrder) {
+    navigate('home');
+    return;
+  }
+  const order = pendingOrder;
   orders.unshift(order);
   currentCompleteOrder = order;
+  pendingOrder = null;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
+  resetFakeOrderForm();
+  renderComplete(order);
+  navigate('complete');
+});
+
+document.getElementById('editOrderButton').addEventListener('click', () => {
+  navigate('home');
+});
+
+function resetFakeOrderForm() {
   form.reset();
   categoryChips.querySelectorAll('.chip').forEach(chip => chip.classList.remove('selected'));
   categoryChips.querySelector('[data-value="전자기기"]').classList.add('selected');
   desireChips.querySelectorAll('.chip').forEach(chip => chip.classList.remove('selected', 'warm'));
   const defaultDesire = desireChips.querySelector('[data-value="꽤 사고 싶음"]');
   defaultDesire.classList.add('selected', 'warm');
-  renderComplete(order);
-  navigate('complete');
-});
+}
+
+function renderConfirm(order) {
+  if (!order) return;
+  document.getElementById('confirmOrderDetails').innerHTML = `
+    <div><span>상품명</span><strong>${escapeHtml(order.productName)}</strong></div>
+    <div><span>주문금액</span><strong>${formatWon(order.price)}</strong></div>
+    <div><span>쇼핑몰명</span><strong>${escapeHtml(order.shopName)}</strong></div>
+    <div><span>카테고리</span><strong>${escapeHtml(order.category)}</strong></div>
+    <div><span>지금 구매욕구</span><strong>${escapeHtml(order.initialDesire)}</strong></div>
+    <div><span>구매 이유</span><strong>${escapeHtml(order.reason || '미입력')}</strong></div>
+    <div><span>예상 배송</span><strong>가짜 배송 · 안 산 것들에 저장</strong></div>
+  `;
+}
 
 function renderComplete(order) {
   if (!order) return;
@@ -278,6 +324,7 @@ function renderAll() {
   renderHomeStats();
   renderOrders();
   renderReport();
+  if (pendingOrder) renderConfirm(pendingOrder);
   if (currentCompleteOrder) renderComplete(currentCompleteOrder);
 }
 

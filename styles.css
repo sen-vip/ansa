@@ -38,7 +38,7 @@ button { cursor: pointer; }
 }
 .brand-mark {
   display: grid; place-items: center; width: 42px; height: 42px;
-  border-radius: 14px; background: var(--navy); color: white; font-weight: 900;
+  border-radius: 14px; background: var(--navy); color: white; font-weight: 900; font-size: 18px; letter-spacing: -0.08em;
   box-shadow: 0 10px 20px rgba(31, 58, 95, 0.16);
 }
 .brand strong { display: block; font-size: 28px; letter-spacing: -0.05em; line-height: 1; }
@@ -78,7 +78,10 @@ button { cursor: pointer; }
 .card-soft, .card-strong { border: 1px solid rgba(230, 222, 210, 0.85); background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow-soft); }
 .card-strong { box-shadow: var(--shadow); }
 .mini-report { max-width: 420px; padding: 24px; display: flex; align-items: center; gap: 18px; }
-.mini-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--green-soft); color: var(--green); display: grid; place-items: center; font-weight: 900; }
+ .mini-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--green-soft); color: var(--green); display: grid; place-items: center; font-weight: 900; font-size: 22px; letter-spacing: -0.08em; }
+.piggy-icon svg { width: 42px; height: 42px; display: block; }
+.piggy-icon path, .piggy-icon circle { fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+.piggy-icon circle { fill: currentColor; stroke: none; }
 .mini-report p { margin: 0 0 4px; font-weight: 800; }
 .mini-report strong { display: block; font-size: 42px; color: var(--green); letter-spacing: -0.06em; }
 .mini-report small { color: var(--muted); }
@@ -185,4 +188,31 @@ input:focus, select:focus, textarea:focus { border-color: var(--green); box-shad
   .page-head { flex-direction: column; align-items: flex-start; }
   .order-main { flex-direction: column; }
   .report-grid { grid-template-columns: 1fr; }
+}
+
+.confirm-wrap { max-width: 1080px; margin: 0 auto; }
+.page-head.compact { margin-top: 8px; }
+.confirm-grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 22px; align-items: start; }
+.confirm-panel, .pay-panel { padding: 30px; }
+.confirm-list { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: #fffdf9; }
+.confirm-list div { display: flex; justify-content: space-between; gap: 18px; padding: 17px 18px; border-bottom: 1px solid var(--line); }
+.confirm-list div:last-child { border-bottom: 0; }
+.confirm-list span { color: var(--muted); font-weight: 850; }
+.confirm-list strong { text-align: right; }
+.pay-panel h2 { font-size: 38px; margin: 2px 0 8px; }
+.pay-copy { color: var(--muted); line-height: 1.7; margin: 0 0 18px; }
+.fake-method { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 17px 18px; border-radius: 18px; background: var(--green-soft); color: var(--green); margin-bottom: 16px; }
+.fake-method span { font-weight: 900; }
+.fake-method strong { text-align: right; }
+.safety-box { background: #fffaf2; border: 1px dashed #ddcdb8; border-radius: 18px; padding: 18px; margin: 16px 0 18px; }
+.safety-box strong { display: block; margin-bottom: 8px; }
+.safety-box ul { margin: 0; padding-left: 20px; color: var(--muted); line-height: 1.8; }
+.ghost-btn.full { width: 100%; margin-top: 10px; }
+.pay-panel .primary-btn { width: 100%; }
+.safe-copy.stronger { margin-top: 12px; font-weight: 900; color: var(--green); }
+@media (max-width: 820px) {
+  .confirm-grid { grid-template-columns: 1fr; }
+  .confirm-panel, .pay-panel { padding: 22px; }
+  .confirm-list div { flex-direction: column; gap: 5px; }
+  .confirm-list strong { text-align: left; }
 }

@@ -5,13 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>안 샀다 | 사고 싶은 마음만 결제하는 쇼핑 시뮬레이터</title>
   <meta name="description" content="사고 싶은 마음만 결제하고, 실제 구매 전 한 번 더 식혀보는 쇼핑 시뮬레이터" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
       <button class="brand" type="button" data-route="home" aria-label="홈으로 이동">
-        <span class="brand-mark">✓</span>
+        <span class="brand-mark">안</span>
         <span>
           <strong>안 샀다</strong>
           <small>질렀지만, 안 샀다.</small>
@@ -43,7 +45,14 @@
             </div>
 
             <article class="mini-report card-soft">
-              <div class="mini-icon">돼</div>
+              <div class="mini-icon piggy-icon" aria-hidden="true">
+                <svg viewBox="0 0 64 64" role="img" aria-label="돼지저금통 아이콘">
+                  <path d="M18 30c0-9 8-16 20-16 9 0 17 4 21 11l4 1v12l-5 2c-2 5-6 9-12 11v7h-8v-5h-9v5h-8v-7c-5-2-9-6-11-11H5V29h8c1-3 3-6 5-8v9Z" />
+                  <path d="M21 20c-2-5-6-8-11-8 0 6 3 10 8 12" />
+                  <circle cx="47" cy="30" r="2.8" />
+                  <path d="M31 20h13" />
+                </svg>
+              </div>
               <div>
                 <p>이번 달 지킨 돈</p>
                 <strong id="homeMonthSaved">0원</strong>
@@ -115,6 +124,55 @@
               <p class="safe-copy">실제 결제가 아닌 구매욕구 시뮬레이션입니다.</p>
             </form>
           </section>
+        </div>
+      </section>
+
+      <section id="confirmView" class="view">
+        <div class="confirm-wrap">
+          <div class="page-head compact">
+            <div>
+              <p class="eyebrow">Simulation Checkout</p>
+              <h1>가짜 주문을 확인해주세요</h1>
+              <p>실제 결제창처럼 한 번 더 확인하지만, 돈은 빠져나가지 않아요.</p>
+            </div>
+          </div>
+
+          <div class="confirm-grid">
+            <section class="card-strong confirm-panel">
+              <div class="card-title-row">
+                <div>
+                  <span class="receipt-icon">▤</span>
+                  <h2>주문 확인</h2>
+                </div>
+                <span class="mode-badge">실제 결제 아님</span>
+              </div>
+              <div id="confirmOrderDetails" class="confirm-list"></div>
+            </section>
+
+            <aside class="card-strong pay-panel">
+              <p class="eyebrow">마음 결제</p>
+              <h2>결제할까요?</h2>
+              <p class="pay-copy">이 단계는 구매욕구를 기록하는 시뮬레이션입니다. 카드번호, 배송지, 계좌정보는 받지 않아요.</p>
+
+              <div class="fake-method">
+                <span>결제수단</span>
+                <strong>마음 결제 · 0원 출금</strong>
+              </div>
+
+              <div class="safety-box">
+                <strong>안심 안내</strong>
+                <ul>
+                  <li>실제 결제가 진행되지 않아요.</li>
+                  <li>실제 배송지 입력이 없어요.</li>
+                  <li>주문은 “안 산 것들”에만 저장돼요.</li>
+                </ul>
+              </div>
+
+              <button id="confirmPayButton" class="primary-btn" type="button">네, 가짜로 결제할게요</button>
+              <button id="editOrderButton" class="ghost-btn full" type="button">다시 수정하기</button>
+              <p class="safe-copy stronger">실제 결제가 아닌 구매욕구 시뮬레이션입니다.</p>
+            </aside>
+          </div>
         </div>
       </section>
 
