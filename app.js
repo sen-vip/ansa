@@ -1,5 +1,11 @@
 const STORAGE_KEY = 'ansaOrdersV1';
-const DELIVERY_MS = 24 * 60 * 60 * 1000;
+const DELIVERY_MS = 5 * 60 * 1000; // v1.5.1 재미 배송속도: 5분 후 배송완료
+const DELIVERY_STEPS = [
+  { status: '주문 확인중', step: 0, minMs: 0, message: '가짜 주문이 접수됐어요. 마음이 조금 식는지 지켜볼게요.' },
+  { status: '상품 준비중', step: 1, minMs: 30 * 1000, message: '상품을 준비하는 척하는 중이에요. 실제 결제와 배송은 없어요.' },
+  { status: '출고 완료', step: 2, minMs: 60 * 1000, message: '가짜 상품이 출고된 척하고 있어요. 아직 돈은 그대로예요.' },
+  { status: '배송중', step: 3, minMs: 3 * 60 * 1000, message: '가짜 상품이 오고 있어요. 기다리는 동안 마음을 식혀볼까요?' },
+];
 
 let orders = loadOrders();
 let currentCompleteOrder = null;
@@ -29,10 +35,14 @@ function loadOrders() {
 
 function migrateOrder(order) {
   const createdAt = order.createdAt || new Date().toISOString();
+  const createdTime = new Date(createdAt).getTime();
+  const savedDeliveredAt = order.fakeDeliveredAt ? new Date(order.fakeDeliveredAt).getTime() : null;
+  const needsSpeedMigration = !order.reviewCreatedAt && (!savedDeliveredAt || savedDeliveredAt - createdTime > DELIVERY_MS);
+  const fakeDeliveredAt = new Date(createdTime + DELIVERY_MS).toISOString();
   return {
     ...order,
     createdAt,
-    fakeDeliveredAt: order.fakeDeliveredAt || new Date(new Date(createdAt).getTime() + DELIVERY_MS).toISOString(),
+    fakeDeliveredAt: needsSpeedMigration ? fakeDeliveredAt : order.fakeDeliveredAt,
     confirmedAt: order.confirmedAt || null,
     confirmedBeforeDelivery: Boolean(order.confirmedBeforeDelivery),
     reviewCreatedAt: order.reviewCreatedAt || null,
@@ -72,10 +82,10 @@ function formatEta(dateString) {
 function timeLeftText(targetDateString) {
   const diff = new Date(targetDateString).getTime() - Date.now();
   if (diff <= 0) return '도착 완료';
-  const hours = Math.floor(diff / (60 * 60 * 1000));
-  const minutes = Math.max(1, Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000)));
-  if (hours >= 1) return `약 ${hours}시간 ${minutes}분 남음`;
-  return `약 ${minutes}분 남음`;
+  const minutes = Math.floor(diff / (60 * 1000));
+  const seconds = Math.max(0, Math.ceil((diff % (60 * 1000)) / 1000));
+  if (minutes >= 1) return `약 ${minutes}분 ${String(seconds).padStart(2, '0')}초 남음`;
+  return `약 ${seconds}초 남음`;
 }
 
 function ymd(date = new Date()) {
@@ -116,26 +126,19 @@ function getDeliveryInfo(order) {
   const total = Math.max(delivered - created, DELIVERY_MS);
   const progress = Math.max(0, Math.min(100, Math.round((elapsed / total) * 100)));
 
-  let status = '주문 확인중';
-  let step = 0;
-  let message = '가짜 주문이 접수됐어요. 마음이 조금 식는지 지켜볼게요.';
+  let currentStep = DELIVERY_STEPS[0];
+  DELIVERY_STEPS.forEach(item => {
+    if (elapsed >= item.minMs) currentStep = item;
+  });
+
+  let status = currentStep.status;
+  let step = currentStep.step;
+  let message = currentStep.message;
 
   if (now >= delivered) {
     status = '배송완료';
     step = 4;
     message = '가짜 상품이 도착했어요. 구매확정하고 마음 리뷰를 남길 수 있어요.';
-  } else if (elapsed >= 12 * 60 * 60 * 1000) {
-    status = '배송중';
-    step = 3;
-    message = '가짜 상품이 오고 있어요. 기다리는 동안 마음을 식혀볼까요?';
-  } else if (elapsed >= 3 * 60 * 60 * 1000) {
-    status = '출고 완료';
-    step = 2;
-    message = '가짜 상품이 출고된 척하고 있어요. 아직 돈은 그대로예요.';
-  } else if (elapsed >= 10 * 60 * 1000) {
-    status = '상품 준비중';
-    step = 1;
-    message = '상품을 준비하는 척하는 중이에요. 실제 결제와 배송은 없어요.';
   }
 
   return {
@@ -251,7 +254,7 @@ function renderConfirm(order) {
     <div><span>카테고리</span><strong>${escapeHtml(order.category)}</strong></div>
     <div><span>지금 구매욕구</span><strong>${escapeHtml(order.initialDesire)}</strong></div>
     <div><span>구매 이유</span><strong>${escapeHtml(order.reason || '미입력')}</strong></div>
-    <div><span>가짜 배송 예정</span><strong>${formatEta(order.fakeDeliveredAt)} 도착 예정</strong></div>
+    <div><span>가짜 배송 예정</span><strong>약 5분 뒤 배송완료 · ${formatEta(order.fakeDeliveredAt)}</strong></div>
   `;
 }
 
@@ -319,7 +322,7 @@ function renderDeliveryTimeline(order) {
       <div class="delivery-steps">
         ${steps.map((step, index) => `<span class="${index <= delivery.step ? 'done' : ''}">${step}</span>`).join('')}
       </div>
-      <p class="delivery-note">예상 도착: ${delivery.deliveredAtText} · 실제 상품은 배송되지 않아요.</p>
+      <p class="delivery-note">재미 배송 기준: 결제 후 약 5분 뒤 배송완료 · 실제 상품은 배송되지 않아요.</p>
     </div>
   `;
 }
@@ -474,4 +477,4 @@ function renderAll() {
 }
 
 renderAll();
-setInterval(renderAll, 60 * 1000);
+setInterval(renderAll, 5 * 1000);
